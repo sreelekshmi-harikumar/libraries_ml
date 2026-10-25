@@ -1,9 +1,6 @@
-
 # Import libraries
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
-import seaborn as sns
 
 from sklearn.datasets import load_digits
 from sklearn.neural_network import MLPClassifier
@@ -15,8 +12,9 @@ from sklearn.metrics import (
 )
 
 # 1. Load dataset
-digits = load_digits(as_frame=True)
-df = digits.frame.copy()
+digits = load_digits()
+df = pd.DataFrame(digits.data, columns=digits.feature_names)
+df["target"] = digits.target
 
 print("First 5 rows:")
 print(df.head())
@@ -41,8 +39,9 @@ Xtr, Xte, ytr, yte = train_test_split(
 )
 
 # 5. Standardize features
-sc = StandardScaler().fit(Xtr)
-Xtr, Xte = sc.transform(Xtr), sc.transform(Xte)
+sc = StandardScaler()
+Xtr = sc.fit_transform(Xtr)
+Xte = sc.transform(Xte)
 
 # 6. Hyperparameter tuning
 results = []
@@ -51,7 +50,7 @@ for lr in [0.001, 0.01]:
     for bs in [32, 128]:
         for ep in [20, 100]:
 
-            m = MLPClassifier(
+            model = MLPClassifier(
                 hidden_layer_sizes=(64,),
                 learning_rate_init=lr,
                 batch_size=bs,
@@ -59,8 +58,8 @@ for lr in [0.001, 0.01]:
                 random_state=0
             )
 
-            m.fit(Xtr, ytr)
-            pred = m.predict(Xte)
+            model.fit(Xtr, ytr)
+            pred = model.predict(Xte)
 
             acc = accuracy_score(yte, pred)
             prec = precision_score(
@@ -73,10 +72,11 @@ for lr in [0.001, 0.01]:
                 yte, pred, average="macro", zero_division=0
             )
 
-            print(
-                f"lr={lr:<6} batch={bs:<4} epochs={ep:<4} "
-                f"| Accuracy: {acc:.4f}"
-            )
+            print("Learning Rate:", lr)
+            print("Batch Size:", bs)
+            print("Epochs:", ep)
+            print("Accuracy:", round(acc, 4))
+            print()
 
             results.append({
                 "Learning Rate": lr,
@@ -104,28 +104,7 @@ print("Batch Size:", int(best["Batch Size"]))
 print("Epochs:", int(best["Epochs"]))
 print("Best Accuracy:", round(best["Accuracy"], 4))
 
-# 9. Plot accuracy for all combinations
-results_df["Configuration"] = results_df.apply(
-    lambda r: f"LR={r['Learning Rate']}, B={int(r['Batch Size'])}, "
-              f"E={int(r['Epochs'])}",
-    axis=1
-)
-
-plt.figure(figsize=(12, 5))
-sns.barplot(
-    data=results_df,
-    x="Configuration",
-    y="Accuracy",
-    color="steelblue"
-)
-plt.title("MLP Hyperparameter Tuning")
-plt.xlabel("Hyperparameter Combination")
-plt.ylabel("Accuracy")
-plt.xticks(rotation=45, ha="right")
-plt.tight_layout()
-plt.show()
-
-# 10. Train the best model and display confusion matrix
+# 9. Train the best model
 best_model = MLPClassifier(
     hidden_layer_sizes=(64,),
     learning_rate_init=float(best["Learning Rate"]),
@@ -137,15 +116,12 @@ best_model = MLPClassifier(
 best_model.fit(Xtr, ytr)
 best_pred = best_model.predict(Xte)
 
+# 10. Display confusion matrix
 cm = confusion_matrix(yte, best_pred)
 
-plt.figure(figsize=(8, 6))
-sns.heatmap(cm, annot=True, fmt="d", cmap="Blues")
-plt.xlabel("Predicted")
-plt.ylabel("Actual")
-plt.title("Confusion Matrix - Best Configuration")
-plt.tight_layout()
-plt.show()
+print("\nConfusion Matrix:")
+print(cm)
 
+# 11. Classification report
 print("\nClassification Report:")
 print(classification_report(yte, best_pred, zero_division=0))
