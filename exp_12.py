@@ -1,9 +1,6 @@
-
 # Import libraries
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
-import seaborn as sns
 
 from sklearn.datasets import load_digits
 from sklearn.svm import SVC
@@ -15,15 +12,16 @@ from sklearn.metrics import (
 )
 
 # 1. Load dataset
-digits = load_digits(as_frame=True)
-df = digits.frame.copy()
+digits = load_digits()
+df = pd.DataFrame(digits.data, columns=digits.feature_names)
+df["target"] = digits.target
 
 print("First 5 rows:")
 print(df.head())
 
 print("\nDataset shape:", df.shape)
 print("\nDataset information:")
-df.info()
+print(df.info())
 
 print("\nMissing values:")
 print(df.isnull().sum())
@@ -52,31 +50,21 @@ Xte = sc.transform(Xte)
 results = []
 
 for k in ["linear", "poly", "rbf"]:
-    m = SVC(kernel=k)
-    m.fit(Xtr, ytr)
+    model = SVC(kernel=k)
+    model.fit(Xtr, ytr)
 
-    pred = m.predict(Xte)
+    pred = model.predict(Xte)
 
     acc = accuracy_score(yte, pred)
-    prec = precision_score(yte, pred, average="macro", zero_division=0)
-    rec = recall_score(yte, pred, average="macro", zero_division=0)
-    f1 = f1_score(yte, pred, average="macro", zero_division=0)
+    prec = precision_score(yte, pred, average="macro")
+    rec = recall_score(yte, pred, average="macro")
+    f1 = f1_score(yte, pred, average="macro")
 
-    print(f"\nKernel: {k}")
-    print(f"Accuracy:  {acc:.4f}")
-    print(f"Precision: {prec:.4f}")
-    print(f"Recall:    {rec:.4f}")
-    print(f"F1 Score:  {f1:.4f}")
-
-    # Confusion matrix
-    cm = confusion_matrix(yte, pred)
-
-    plt.figure(figsize=(7, 5))
-    sns.heatmap(cm, annot=True, fmt="d", cmap="Blues")
-    plt.xlabel("Predicted")
-    plt.ylabel("Actual")
-    plt.title(f"Confusion Matrix - {k} kernel")
-    plt.show()
+    print("\nKernel:", k)
+    print("Accuracy:", round(acc, 4))
+    print("Precision:", round(prec, 4))
+    print("Recall:", round(rec, 4))
+    print("F1 Score:", round(f1, 4))
 
     results.append({
         "Kernel": k,
@@ -90,25 +78,26 @@ for k in ["linear", "poly", "rbf"]:
 results_df = pd.DataFrame(results)
 
 print("\nFinal Performance Comparison:")
-print(results_df.round(4))
+print(results_df.round(4).to_string(index=False))
 
-# 8. Plot accuracy comparison
-plt.figure(figsize=(7, 4))
-sns.barplot(data=results_df, x="Kernel", y="Accuracy")
-plt.title("SVM Kernel Comparison")
-plt.ylabel("Accuracy")
-plt.ylim(0, 1)
-plt.show()
-
-# 9. Classification report for the best kernel by accuracy
+# 8. Find the best kernel by accuracy
 best_kernel = results_df.loc[
     results_df["Accuracy"].idxmax(), "Kernel"
 ]
 
+print("\nBest Kernel:", best_kernel)
+
+# 9. Train the best model
 best_model = SVC(kernel=best_kernel)
 best_model.fit(Xtr, ytr)
 best_pred = best_model.predict(Xte)
 
-print("\nBest kernel:", best_kernel)
+# 10. Display confusion matrix
+cm = confusion_matrix(yte, best_pred)
+
+print("\nConfusion Matrix:")
+print(cm)
+
+# 11. Display classification report
 print("\nClassification Report:")
-print(classification_report(yte, best_pred, zero_division=0))
+print(classification_report(yte, best_pred))
