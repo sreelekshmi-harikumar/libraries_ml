@@ -1,9 +1,6 @@
-
 # Import libraries
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
-import seaborn as sns
 
 from sklearn.datasets import load_breast_cancer
 from sklearn.model_selection import train_test_split
@@ -16,15 +13,17 @@ from sklearn.metrics import (
 )
 
 # 1. Load dataset
-data = load_breast_cancer(as_frame=True)
-df = data.frame.copy()
+data = load_breast_cancer()
+df = pd.DataFrame(data.data, columns=data.feature_names)
+df["target"] = data.target
 
 # 2. Explore dataset
 print("First 5 rows:")
 print(df.head())
 
+print("\nDataset shape:", df.shape)
 print("\nDataset information:")
-df.info()
+print(df.info())
 
 print("\nStatistical summary:")
 print(df.describe())
@@ -49,15 +48,10 @@ Xtr, Xte, ytr, yte = train_test_split(
 
 # 6. Standardize features
 scaler = StandardScaler()
-
 Xtr = scaler.fit_transform(Xtr)
 Xte = scaler.transform(Xte)
 
 # 7. Define models
-# MLE: unregularized maximum-likelihood estimate
-# MAP-L1: L1 regularization (Laplace-prior interpretation)
-# MAP-L2: L2 regularization (Gaussian-prior interpretation)
-
 models = {
     "MLE": LogisticRegression(
         penalty=None, max_iter=5000
@@ -70,7 +64,7 @@ models = {
     )
 }
 
-# 8. Train, predict and evaluate
+# 8. Train and evaluate models
 results = []
 
 for name, model in models.items():
@@ -80,39 +74,29 @@ for name, model in models.items():
     prob = model.predict_proba(Xte)[:, 1]
 
     acc = accuracy_score(yte, pred)
-    prec = precision_score(yte, pred, zero_division=0)
-    rec = recall_score(yte, pred, zero_division=0)
-    f1 = f1_score(yte, pred, zero_division=0)
+    prec = precision_score(yte, pred)
+    rec = recall_score(yte, pred)
+    f1 = f1_score(yte, pred)
     auc = roc_auc_score(yte, prob)
 
-    print(f"\n{name}")
-    print(f"Accuracy:  {acc:.4f}")
-    print(f"Precision: {prec:.4f}")
-    print(f"Recall:    {rec:.4f}")
-    print(f"F1 Score:  {f1:.4f}")
-    print(f"ROC-AUC:   {auc:.4f}")
+    print("\nModel:", name)
+    print("Accuracy:", round(acc, 4))
+    print("Precision:", round(prec, 4))
+    print("Recall:", round(rec, 4))
+    print("F1 Score:", round(f1, 4))
+    print("ROC-AUC:", round(auc, 4))
 
     print("\nClassification Report:")
     print(classification_report(
         yte, pred,
-        target_names=data.target_names,
-        zero_division=0
+        target_names=data.target_names
     ))
 
     # Confusion matrix
     cm = confusion_matrix(yte, pred)
 
-    plt.figure(figsize=(5, 4))
-    sns.heatmap(
-        cm, annot=True, fmt="d", cmap="Blues",
-        xticklabels=data.target_names,
-        yticklabels=data.target_names
-    )
-    plt.xlabel("Predicted")
-    plt.ylabel("Actual")
-    plt.title(f"Confusion Matrix - {name}")
-    plt.tight_layout()
-    plt.show()
+    print("\nConfusion Matrix:")
+    print(cm)
 
     results.append({
         "Model": name,
@@ -123,16 +107,15 @@ for name, model in models.items():
         "ROC-AUC": auc
     })
 
-# 9. Final comparison using pandas
+# 9. Final comparison
 results_df = pd.DataFrame(results)
 
 print("\nFinal Model Comparison:")
-print(results_df.round(4))
+print(results_df.round(4).to_string(index=False))
 
-# 10. Plot accuracy comparison
-plt.figure(figsize=(7, 4))
-sns.barplot(data=results_df, x="Model", y="Accuracy")
-plt.title("Logistic Regression: Accuracy Comparison")
-plt.ylim(0, 1)
-plt.tight_layout()
-plt.show()
+# 10. Find the best model
+best_model = results_df.loc[
+    results_df["Accuracy"].idxmax(), "Model"
+]
+
+print("\nBest Model:", best_model)
