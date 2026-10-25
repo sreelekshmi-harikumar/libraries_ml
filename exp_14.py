@@ -1,10 +1,7 @@
-
 # Import libraries
 import time
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
-import seaborn as sns
 
 from sklearn.datasets import load_digits
 from sklearn.neural_network import MLPClassifier
@@ -16,15 +13,16 @@ from sklearn.metrics import (
 )
 
 # 1. Load dataset
-digits = load_digits(as_frame=True)
-df = digits.frame.copy()
+digits = load_digits()
+df = pd.DataFrame(digits.data, columns=digits.feature_names)
+df["target"] = digits.target
 
 print("First 5 rows:")
 print(df.head())
 
 print("\nDataset shape:", df.shape)
 print("\nDataset information:")
-df.info()
+print(df.info())
 
 print("\nMissing values:")
 print(df.isnull().sum())
@@ -45,8 +43,9 @@ Xtr, Xte, ytr, yte = train_test_split(
 )
 
 # 5. Standardize features
-sc = StandardScaler().fit(Xtr)
-Xtr, Xte = sc.transform(Xtr), sc.transform(Xte)
+sc = StandardScaler()
+Xtr = sc.fit_transform(Xtr)
+Xte = sc.transform(Xte)
 
 # 6. Compare activation functions
 activations = ["logistic", "relu", "tanh"]
@@ -55,30 +54,30 @@ results = []
 for a in activations:
     start = time.time()
 
-    m = MLPClassifier(
+    model = MLPClassifier(
         hidden_layer_sizes=(64,),
         activation=a,
         max_iter=500,
         random_state=0
     )
 
-    m.fit(Xtr, ytr)
-    pred = m.predict(Xte)
+    model.fit(Xtr, ytr)
+    pred = model.predict(Xte)
 
     elapsed = time.time() - start
 
     acc = accuracy_score(yte, pred)
-    prec = precision_score(yte, pred, average="macro", zero_division=0)
-    rec = recall_score(yte, pred, average="macro", zero_division=0)
-    f1 = f1_score(yte, pred, average="macro", zero_division=0)
+    prec = precision_score(yte, pred, average="macro")
+    rec = recall_score(yte, pred, average="macro")
+    f1 = f1_score(yte, pred, average="macro")
 
-    print(f"\nActivation: {a}")
-    print(f"Accuracy:  {acc:.4f}")
-    print(f"Precision: {prec:.4f}")
-    print(f"Recall:    {rec:.4f}")
-    print(f"F1 Score:  {f1:.4f}")
-    print(f"Epochs:    {m.n_iter_}")
-    print(f"Time:      {elapsed:.2f} seconds")
+    print("\nActivation:", a)
+    print("Accuracy:", round(acc, 4))
+    print("Precision:", round(prec, 4))
+    print("Recall:", round(rec, 4))
+    print("F1 Score:", round(f1, 4))
+    print("Epochs:", model.n_iter_)
+    print("Time:", round(elapsed, 2), "seconds")
 
     results.append({
         "Activation": a,
@@ -86,7 +85,7 @@ for a in activations:
         "Precision": prec,
         "Recall": rec,
         "F1 Score": f1,
-        "Epochs": m.n_iter_,
+        "Epochs": model.n_iter_,
         "Time (seconds)": elapsed
     })
 
@@ -94,41 +93,32 @@ for a in activations:
 results_df = pd.DataFrame(results)
 
 print("\nFinal Performance Comparison:")
-print(results_df.round(4))
+print(results_df.round(4).to_string(index=False))
 
-# 8. Plot accuracy comparison
-plt.figure(figsize=(7, 4))
-sns.barplot(data=results_df, x="Activation", y="Accuracy")
-plt.title("MLP Activation Function Comparison")
-plt.ylabel("Accuracy")
-plt.ylim(0, 1.05)
-plt.tight_layout()
-plt.show()
-
-# 9. Confusion matrix for the best activation
+# 8. Find the best activation function
 best_activation = results_df.loc[
     results_df["Accuracy"].idxmax(), "Activation"
 ]
 
+print("\nBest Activation:", best_activation)
+
+# 9. Train the best model
 best_model = MLPClassifier(
     hidden_layer_sizes=(64,),
     activation=best_activation,
     max_iter=500,
     random_state=0
 )
+
 best_model.fit(Xtr, ytr)
 best_pred = best_model.predict(Xte)
 
+# 10. Display confusion matrix
 cm = confusion_matrix(yte, best_pred)
 
-plt.figure(figsize=(8, 6))
-sns.heatmap(cm, annot=True, fmt="d", cmap="Blues")
-plt.xlabel("Predicted")
-plt.ylabel("Actual")
-plt.title(f"Confusion Matrix - {best_activation}")
-plt.tight_layout()
-plt.show()
+print("\nConfusion Matrix:")
+print(cm)
 
-print("\nBest activation:", best_activation)
+# 11. Display classification report
 print("\nClassification Report:")
-print(classification_report(yte, best_pred, zero_division=0))
+print(classification_report(yte, best_pred))
