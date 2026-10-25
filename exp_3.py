@@ -1,4 +1,3 @@
-
 # Import libraries
 import numpy as np
 import pandas as pd
@@ -11,19 +10,11 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import mean_squared_error, r2_score
 
-# 1. Load dataset
-diabetes = load_diabetes(as_frame=True)
-df = diabetes.frame.copy()
+# 1. Load dataset (manual DataFrame construction)
+diabetes = load_diabetes()
 
-# 2. Explore dataset
-print("First 5 rows:")
-print(df.head())
-
-print("\nDataset information:")
-df.info()
-
-print("\nStatistical summary:")
-print(df.describe())
+df = pd.DataFrame(diabetes.data, columns=diabetes.feature_names)
+df["target"] = diabetes.target
 
 # 3. Handle missing values and duplicates
 print("\nMissing values:")
@@ -66,9 +57,7 @@ for name, model in models.items():
     mse = mean_squared_error(yte, pred)
     r2 = r2_score(yte, pred)
 
-    print(
-        f"{name:<7} | MSE: {mse:.2f} | R2: {r2:.4f}"
-    )
+    print(f"{name:<7} | MSE: {mse:.2f} | R2: {r2:.4f}")
 
     if name == "Ridge" or name == "Lasso":
         print("Selected alpha:", model.alpha_)
@@ -84,15 +73,3 @@ results_df = pd.DataFrame(results)
 
 print("\nFinal Comparison:")
 print(results_df.round(4))
-
-# 10. Plot model comparison
-fig, axes = plt.subplots(1, 2, figsize=(10, 4))
-
-sns.barplot(data=results_df, x="Model", y="MSE", ax=axes[0])
-axes[0].set_title("MSE Comparison (lower is better)")
-
-sns.barplot(data=results_df, x="Model", y="R2 Score", ax=axes[1])
-axes[1].set_title("R2 Comparison (higher is better)")
-
-plt.tight_layout()
-plt.show()
